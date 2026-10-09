@@ -125,3 +125,31 @@ def test_http_method_narrows_a_shared_route():
 def test_concrete_url_matches_route_template():
     docs = "# API\n\n## Try it\n\n```bash\ncurl http://localhost:8000/items/5\n```\n"
     assert _pairs(_api_links(docs)) == {("api.py::read_item", "api.md#try-it")}
+    
+SETTINGS = '''
+from pydantic_settings import BaseSettings
+
+
+class AppSettings(BaseSettings):
+    max_items: int = 1000
+    debug: bool = False
+'''
+
+
+def _settings_links(docs):
+    return build_links(parse_source(SETTINGS, "settings.py"), parse_markdown(docs, "cfg.md"))
+
+
+def test_env_var_links_to_config_class():
+    links = _settings_links("# Cfg\n\n## Limits\n\nSet `MAX_ITEMS=500` to limit items.\n")
+    assert _pairs(links) == {("settings.py::AppSettings", "cfg.md#limits")}
+
+
+def test_single_word_env_var_in_caps_links():
+    links = _settings_links("# Cfg\n\n## Debugging\n\nSet `DEBUG=1` for logs.\n")
+    assert _pairs(links) == {("settings.py::AppSettings", "cfg.md#debugging")}
+
+
+def test_generic_lowercase_word_does_not_link():
+    links = _settings_links("# Cfg\n\n## Debugging\n\nTurn on `debug` for logs.\n")
+    assert links == []

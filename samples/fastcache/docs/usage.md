@@ -15,6 +15,11 @@ Call `Cache.clear_all()` to remove every item.
 ## REST API
 
 Fetch an item over HTTP with `GET /items/{key}`. Store one with `POST /items`.
+
+## Configuration
+
+Set `MAX_ITEMS` to limit how many items are kept (default 1000). The
+time-to-live comes from `DEFAULT_TTL`, which defaults to 300 seconds.
 ## Installation
 
 Run `pip install fastcache`.
