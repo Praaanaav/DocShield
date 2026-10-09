@@ -13,7 +13,12 @@ class ChunkKind(str, Enum):
 class ConfigField(BaseModel):
     name: str
     type: str | None = None
-    default: str | None = None  # source text of the default; None means no default
+    default: str | None = None  # source text of the default; None means no default 
+    
+class CliOption(BaseModel):
+    flags: list[str]  # ["-t", "--timeout"]; a bare name like "key" is a positional argument
+    default: str | None = None  # source text of the default
+    help: str | None = None
 
 class CodeChunk(BaseModel):
     id: str  # stable ID: "src/fastcache/core.py::get_item"
@@ -28,6 +33,7 @@ class CodeChunk(BaseModel):
     route: str | None = None  # endpoints only, e.g. "/items/{item_id}"
     http_method: str | None = None
     config_fields: list[ConfigField] = Field(default_factory=list)  # config classes only
+    cli_options: list[CliOption] = Field(default_factory=list)  
 
 class DocSection(BaseModel):
     id: str  # stable ID: "docs/usage.md#fetching-items"

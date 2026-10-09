@@ -20,6 +20,12 @@ Fetch an item over HTTP with `GET /items/{key}`. Store one with `POST /items`.
 
 Set `MAX_ITEMS` to limit how many items are kept (default 1000). The
 time-to-live comes from `DEFAULT_TTL`, which defaults to 300 seconds.
+
+## Command line
+
+Run `fastcache KEY` to fetch an item. Use `--timeout` to change how long it
+waits (default 30 seconds), and `--verbose` for more output.
+
 ## Installation
 
 Run `pip install fastcache`.

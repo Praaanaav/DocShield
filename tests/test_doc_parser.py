@@ -77,3 +77,6 @@ def test_urls_contribute_their_path():
 def test_file_paths_are_not_routes():
     refs = extract_code_refs("Edit `src/docheal/models.py` first.")
     assert not any(ref.startswith("/") for ref in refs)
+    
+def test_flags_with_underscores():
+    assert "--max_wait" in extract_code_refs("Pass `--max_wait 60` to wait longer.")

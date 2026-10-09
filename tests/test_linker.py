@@ -153,3 +153,39 @@ def test_single_word_env_var_in_caps_links():
 def test_generic_lowercase_word_does_not_link():
     links = _settings_links("# Cfg\n\n## Debugging\n\nTurn on `debug` for logs.\n")
     assert links == []
+    
+CLI_CODE = '''
+import argparse
+
+
+def build_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--timeout", type=int, default=30)
+    parser.add_argument("--verbose", action="store_true")
+    return parser
+
+
+def other():
+    other_parser = argparse.ArgumentParser()
+    other_parser.add_argument("--output")
+'''
+
+
+def _cli_links(docs):
+    return build_links(parse_source(CLI_CODE, "cli.py"), parse_markdown(docs, "cli.md"))
+
+
+def test_flag_in_docs_links_to_cli_function():
+    links = _cli_links("# CLI\n\n## Waiting\n\nPass `--timeout 60` to wait longer.\n")
+    assert _pairs(links) == {("cli.py::build_parser", "cli.md#waiting")}
+
+
+def test_unknown_flag_does_not_link():
+    links = _cli_links("# CLI\n\n## Other\n\nUse `--upgrade` here.\n")
+    assert links == []
+
+
+def test_generic_flags_are_skipped():
+    code = 'def f(p):\n    p.add_argument("--version")\n'
+    docs = "# T\n\nUse `--version`.\n"
+    assert build_links(parse_source(code, "c.py"), parse_markdown(docs, "c.md")) == []

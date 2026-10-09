@@ -9,10 +9,12 @@ MAX_CANDIDATES = 3
 # One route can legitimately have several endpoints (GET, POST, PUT, DELETE...).
 MAX_ROUTE_CANDIDATES = 6
 MAX_FIELD_CANDIDATES = 3
+MAX_FLAG_CANDIDATES = 3
 
 HTTP_METHODS = {
     "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "WEBSOCKET",
 }
+GENERIC_FLAGS = {"--help", "--version"}  # nearly every CLI has these; they say nothing
 PARAM_RE = re.compile(r"\{[^}]*\}|<[^>]*>")  # {item_id} or <int:item_id>
 
 
@@ -70,22 +72,32 @@ def _link_all(
 
 
 def build_links(chunks: list[CodeChunk], sections: list[DocSection]) -> list[Link]:
-    """Link doc sections to code chunks whose names, routes or config keys they mention."""
+    """Link doc sections to code chunks whose names, routes, config keys or flags they mention."""
     by_qualified: dict[str, list[CodeChunk]] = defaultdict(list)
     by_short: dict[str, list[CodeChunk]] = defaultdict(list)
     by_field: dict[str, list[CodeChunk]] = defaultdict(list)
+    by_flag: dict[str, list[CodeChunk]] = defaultdict(list)
     for chunk in chunks:
         by_qualified[chunk.name].append(chunk)  # "Cache.clear_all"
         by_short[_last_part(chunk.name)].append(chunk)  # "clear_all"
         if chunk.kind == ChunkKind.CONFIG:
             for config_field in chunk.config_fields:
                 by_field[config_field.name.lower()].append(chunk)  # "max_items"
+        if chunk.kind == ChunkKind.CLI:
+            flags = {f for o in chunk.cli_options for f in o.flags if f.startswith("--")}
+            for flag in flags:
+                by_flag[flag].append(chunk)  # "--timeout"
     endpoints = [c for c in chunks if c.kind == ChunkKind.ENDPOINT and c.route]
 
     links: dict[tuple[str, str], Link] = {}
     for section in sections:
         mentioned_methods = {r for r in section.code_refs if r in HTTP_METHODS}
         for ref in section.code_refs:
+            if ref.startswith("--"):
+                if ref not in GENERIC_FLAGS:
+                    _link_all(links, by_flag.get(ref, []), MAX_FLAG_CANDIDATES, section)
+                continue
+
             if ref.startswith("/"):
                 candidates = [c for c in endpoints if route_matches(c.route, ref)]
                 # "POST /items" should pick the POST endpoint, not the GET one.

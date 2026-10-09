@@ -164,3 +164,90 @@ def test_ordinary_classes_stay_classes():
     assert chunks["settings.py::ItemSchema"].kind == ChunkKind.CLASS
     assert chunks["settings.py::PlainSettings"].kind == ChunkKind.CLASS
     assert chunks["settings.py::ItemSchema"].config_fields == []
+    
+CLIS = '''
+import argparse
+from typing import Annotated
+
+import click
+import typer
+
+app = typer.Typer()
+
+
+def build_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("key", help="Key to fetch")
+    parser.add_argument("-t", "--timeout", type=int, default=30, help="Seconds")
+    parser.add_argument("--verbose", action="store_true")
+    return parser
+
+
+@click.command()
+@click.argument("name")
+@click.option("--count", "-c", default=1, help="How many times")
+@click.option("--shout/--no-shout", default=False)
+def hello(name, count, shout):
+    pass
+
+
+@app.command()
+def fetch(key: str, timeout: int = 30, retries: int = typer.Option(3, "--retries", "-r", help="Retry count")):
+    pass
+
+
+@app.command()
+def push(
+    target: Annotated[str, typer.Argument()],
+    force: Annotated[bool, typer.Option("--force", help="Overwrite")] = False,
+):
+    pass
+
+
+def helper():
+    return 1
+'''
+
+
+def _options(chunk):
+    return {tuple(option.flags): option for option in chunk.cli_options}
+
+
+def test_argparse_function_is_cli():
+    chunk = _by_id(parse_source(CLIS, "cli.py"))["cli.py::build_parser"]
+    assert chunk.kind == ChunkKind.CLI
+    options = _options(chunk)
+    assert list(options) == [("key",), ("-t", "--timeout"), ("--verbose",)]
+    assert options[("-t", "--timeout")].default == "30"
+    assert options[("key",)].help == "Key to fetch"
+
+
+def test_click_command_reads_decorators():
+    chunk = _by_id(parse_source(CLIS, "cli.py"))["cli.py::hello"]
+    assert chunk.kind == ChunkKind.CLI
+    options = _options(chunk)
+    assert list(options) == [("name",), ("--count", "-c"), ("--shout", "--no-shout")]
+    assert options[("--count", "-c")].default == "1"
+
+
+def test_typer_command_reads_parameters():
+    chunk = _by_id(parse_source(CLIS, "cli.py"))["cli.py::fetch"]
+    options = _options(chunk)
+    assert list(options) == [("key",), ("--timeout",), ("--retries", "-r")]
+    assert options[("--timeout",)].default == "30"
+    assert options[("--retries", "-r")].default == "3"
+    assert options[("--retries", "-r")].help == "Retry count"
+
+
+def test_typer_annotated_style():
+    chunk = _by_id(parse_source(CLIS, "cli.py"))["cli.py::push"]
+    options = _options(chunk)
+    assert list(options) == [("target",), ("--force",)]
+    assert options[("--force",)].default == "False"
+    assert options[("--force",)].help == "Overwrite"
+
+
+def test_plain_function_stays_function():
+    chunk = _by_id(parse_source(CLIS, "cli.py"))["cli.py::helper"]
+    assert chunk.kind == ChunkKind.FUNCTION
+    assert chunk.cli_options == []
