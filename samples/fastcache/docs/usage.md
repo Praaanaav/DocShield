@@ -12,7 +12,9 @@ Create a `Cache` and call `cache.set_item("a", "1")` to store a value.
 ## Clearing the cache
 
 Call `Cache.clear_all()` to remove every item.
+## REST API
 
+Fetch an item over HTTP with `GET /items/{key}`. Store one with `POST /items`.
 ## Installation
 
 Run `pip install fastcache`.

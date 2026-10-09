@@ -21,7 +21,8 @@ class CodeChunk(BaseModel):
     source: str  # full source text of the chunk
     start_line: int
     end_line: int
-
+    route: str | None = None  # endpoints only, e.g. "/items/{item_id}"
+    http_method: str | None = None
 
 class DocSection(BaseModel):
     id: str  # stable ID: "docs/usage.md#fetching-items"

@@ -4,6 +4,8 @@ from pathlib import Path
 
 from docheal.models import DocSection
 
+ROUTE_RE = re.compile(r"(?<![\w.:/])/[\w\-./{}:<>]*")
+URL_PATH_RE = re.compile(r"https?://[^/\s'\"]+(/[\w\-./{}:<>%]*)")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
@@ -12,9 +14,14 @@ FLAG_RE = re.compile(r"(?<![\w-])--[A-Za-z][A-Za-z0-9-]*")
 SKIP_DIRS = {".venv", "venv", ".git", "node_modules", "build", "dist", "site"}
 IGNORED_WORDS = {"True", "False", "None"}
 
+def _routes_in(segment: str) -> set[str]:
+    """Find URL paths like /items/{id}, including the path part of full URLs."""
+    found = set(ROUTE_RE.findall(segment)) | set(URL_PATH_RE.findall(segment))
+    cleaned = {route.rstrip(".,:;") for route in found}
+    return {route for route in cleaned if len(route) > 1}
 
 def extract_code_refs(text: str) -> list[str]:
-    """Collect names that look like code: inline `code` spans, fenced blocks, CLI flags."""
+    """Collect names that look like code: inline `code` spans, fenced blocks, CLI flags, routes."""
     refs: set[str] = set()
     in_fence = False
     for line in text.splitlines():
@@ -24,12 +31,12 @@ def extract_code_refs(text: str) -> list[str]:
         segments = [line] if in_fence else INLINE_CODE_RE.findall(line)
         for segment in segments:
             refs.update(FLAG_RE.findall(segment))
+            refs.update(_routes_in(segment))  # <- new
             for token in IDENT_RE.findall(segment):
                 if len(token) < 2 or keyword.iskeyword(token) or token in IGNORED_WORDS:
                     continue
                 refs.add(token)
     return sorted(refs)
-
 
 def _slugify(text: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", text.lower()).strip()

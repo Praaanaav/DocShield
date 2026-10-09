@@ -90,3 +90,38 @@ def test_no_duplicate_links():
     code = "def get_item():\n    pass\n"
     links = _links_for(code, "# T\n\nUse `get_item()` or `lib.get_item()`.\n")
     assert len(links) == 1
+    
+API = '''
+@app.get("/items")
+def list_items():
+    pass
+
+
+@app.post("/items")
+def create_item():
+    pass
+
+
+@app.get("/items/{item_id}")
+def read_item(item_id):
+    pass
+'''
+
+
+def _api_links(docs):
+    return build_links(parse_source(API, "api.py"), parse_markdown(docs, "api.md"))
+
+
+def test_route_in_docs_links_to_endpoint():
+    links = _api_links("# API\n\n## Read\n\nCall `GET /items/{id}` to read one.\n")
+    assert _pairs(links) == {("api.py::read_item", "api.md#read")}
+
+
+def test_http_method_narrows_a_shared_route():
+    links = _api_links("# API\n\n## Create\n\nSend `POST /items` to create one.\n")
+    assert _pairs(links) == {("api.py::create_item", "api.md#create")}
+
+
+def test_concrete_url_matches_route_template():
+    docs = "# API\n\n## Try it\n\n```bash\ncurl http://localhost:8000/items/5\n```\n"
+    assert _pairs(_api_links(docs)) == {("api.py::read_item", "api.md#try-it")}

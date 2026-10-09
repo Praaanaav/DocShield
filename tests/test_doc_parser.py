@@ -62,3 +62,18 @@ def test_duplicate_headings_get_unique_ids():
     text = "# A\n\n## Notes\n\nx\n\n# B\n\n## Notes\n\ny\n"
     ids = [s.id for s in parse_markdown(text, "d.md")]
     assert len(ids) == len(set(ids))
+    
+def test_routes_are_refs():
+    refs = extract_code_refs("Call `GET /items/{item_id}` to read one.")
+    assert "/items/{item_id}" in refs
+    assert "GET" in refs
+
+
+def test_urls_contribute_their_path():
+    refs = extract_code_refs("```\ncurl http://localhost:8000/items/5?x=1\n```")
+    assert "/items/5" in refs
+
+
+def test_file_paths_are_not_routes():
+    refs = extract_code_refs("Edit `src/docheal/models.py` first.")
+    assert not any(ref.startswith("/") for ref in refs)
